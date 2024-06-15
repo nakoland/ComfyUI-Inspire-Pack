@@ -5,8 +5,7 @@ let get_wildcards_list;
 try {
 	const ImpactPack = await import("../ComfyUI-Impact-Pack/impact-pack.js");
 	get_wildcards_list = ImpactPack.get_wildcards_list;
-}
-catch (error) {}
+} catch (error) {}
 
 // fallback
 if(!get_wildcards_list) {
@@ -25,7 +24,6 @@ async function get_prompt_builder_items(category) {
 		return data.presets;
 	}
 }
-
 
 app.registerExtension({
 	name: "Comfy.Inspire.Prompts",
@@ -102,6 +100,54 @@ app.registerExtension({
 							return true;
 					 }
 			});
+
+			// 추가된 코드: Save 기능
+			const filePathWidget = node.addWidget("text", "File Path", "output.txt", (value) => {
+				node.filePath = value;
+			});
+			node.filePath = filePathWidget.value;
+
+			const saveButton = node.addWidget("button", "Save", "", () => {
+				const inputString = wildcard_text_widget.value;
+				const filePath = node.filePath;
+
+				const saveFile = (path, content) => {
+					try {
+						const blob = new Blob([content], { type: 'text/plain' });
+						const link = document.createElement('a');
+						link.href = URL.createObjectURL(blob);
+						link.download = path;
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+					} catch (e) {
+						console.error("File save error: ", e);
+					}
+				};
+
+				if (!filePath || filePath.trim() === "") {
+					const fileInput = document.createElement("input");
+					fileInput.type = "file";
+					fileInput.style.display = "none";
+					fileInput.onchange = (e) => {
+						const file = e.target.files[0];
+						if (file) {
+							saveFile(file.name, inputString);
+						}
+					};
+					document.body.appendChild(fileInput);
+					fileInput.click();
+					document.body.removeChild(fileInput);
+				} else {
+					saveFile(filePath, inputString);
+				}
+			});
+
+			filePathWidget.label = "File Path";
+			filePathWidget.serialize = true;
+
+			saveButton.label = "Save";
+			saveButton.serialize = false;
 		}
 		else if(node.comfyClass == "MakeBasicPipe //Inspire") {
 			const pos_wildcard_text_widget = node.widgets.find((w) => w.name == 'positive_wildcard_text');
@@ -253,9 +299,6 @@ app.registerExtension({
 		}
 	}
 });
-
-
-
 
 const original_queuePrompt = api.queuePrompt;
 async function queuePrompt_with_widget_idxs(number, { output, workflow }) {
