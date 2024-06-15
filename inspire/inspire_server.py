@@ -1,5 +1,6 @@
 import random
 import os
+import json
 
 import nodes
 import server
@@ -10,53 +11,64 @@ from . import backend_support
 
 
 max_seed = 2**32 - 1
-preset_file = os.path.join(os.path.dirname(__file__), "../prompts/preset.txt")
+preset_file = os.path.join(os.path.dirname(__file__), "../prompts/preset.json")
 
 @server.PromptServer.instance.routes.get("/inspire/preset_titles")
 async def get_preset_titles(request):
     titles = []
-    with open(preset_file, "r") as file:
-        lines = file.readlines()
-        for line in lines:
-            title, _ = line.strip().split(": ")
-            titles.append(title)
+    if os.path.exists(preset_file):
+        with open(preset_file, "r") as file:
+            try:
+                data = json.load(file)
+                titles = list(data.keys())
+            except json.JSONDecodeError:
+                pass
     return web.json_response(titles)
-
 
 @server.PromptServer.instance.routes.get("/inspire/preset_content")
 async def get_preset_content(request):
     title = request.rel_url.query['title']
     content = ""
-    with open(preset_file, "r") as file:
-        lines = file.readlines()
-        for line in lines:
-            current_title, current_content = line.strip().split(": ")
-            if current_title == title:
-                content = current_content
-                break
+    if os.path.exists(preset_file):
+        with open(preset_file, "r") as file:
+            try:
+                data = json.load(file)
+                content = data.get(title, "")
+            except json.JSONDecodeError:
+                pass
     return web.json_response({"content": content})
-
 
 @server.PromptServer.instance.routes.post("/inspire/save_preset")
 async def save_preset(request):
-    data = await request.json()
-    title = data['title']
-    content = data['content']
+    try:
+        data = await request.json()
+        title = data['title']
+        content = data['content']
 
-    lines = []
-    with open(preset_file, "r") as file:
-        lines = file.readlines()
+        if os.path.exists(preset_file):
+            with open(preset_file, "r") as file:
+                try:
+                    presets = json.load(file)
+                except json.JSONDecodeError:
+                    presets = {}
+        else:
+            presets = {}
 
-    with open(preset_file, "w") as file:
-        file.write(f"{title}: {content}\n")
-        for line in lines:
-            current_title, _ = line.strip().split(": ")
-            if current_title != title:
-                file.write(line)
-            else:
-                continue
+        # 기존 프리셋 리스트에서 동일한 제목의 프리셋이 있는 경우 제거
+        if title in presets:
+            del presets[title]
 
-    return web.Response(status=200)
+        # 새로운 프리셋을 맨 위에 추가
+        new_presets = {title: content}
+        new_presets.update(presets)
+
+        with open(preset_file, "w") as file:
+            json.dump(new_presets, file, indent=4)
+
+        return web.Response(status=200)
+    except Exception as e:
+        print(f"Error saving preset: {e}")
+        return web.Response(status=500, text=str(e))
 
 @server.PromptServer.instance.routes.get("/inspire/prompt_builder")
 def prompt_builder(request):
