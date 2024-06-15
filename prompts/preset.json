@@ -1,0 +1,6 @@
+{
+    "c": "\nexec_old @ utils.js:105\nobj.<computed> @",
+    "a": "\nexec_old @ utils.js:105\nobj.<computed> @ utils.js:124\nLGraphCanvas.processMouseDown @ litegraph.core.js:6098\nLGraphCanvas.processMouseDown @ simpleTouchSupport.js:93\nLGraphCanvas.processMouseDown @ undoRedo.js:166\nLGraphCanvas.processMouseDown @ rgthree.js:242\nLGraphCanvas.processMouseDown @ app.js:992Understand this error\nprompt.js:163 Save successful\n\n",
+    "default_preset_name": "test3",
+    "default_preset_name2": "test2"
+}

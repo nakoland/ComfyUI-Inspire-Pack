@@ -41,7 +41,7 @@ async function fetchPresetTitles() {
 // 프리셋 파일 경로에서 내용을 불러오는 함수
 async function fetchPresetContent(title) {
     try {
-        const response = await fetch(`/inspire/preset_content?title=${title}`);
+        const response = await fetch(`/inspire/preset_content?title=${encodeURIComponent(title)}`);
         if (!response.ok) throw new Error(`Failed to fetch content for title: ${title}`);
         const data = await response.json();
         return data.content;
@@ -50,6 +50,7 @@ async function fetchPresetContent(title) {
         return "";
     }
 }
+
 
 app.registerExtension({
     name: "Comfy.Inspire.Prompts",
@@ -133,12 +134,11 @@ app.registerExtension({
                 console.log("Preset selected:", value); // 프리셋 선택 확인
             }, { values: [] });
 
-			// 프리셋 목록 불러와서 위젯에 설정
+            // 프리셋 목록 불러와서 위젯에 설정
             const loadPresetTitles = async () => {
                 const titles = await fetchPresetTitles();
-                presetWidget.options.originalValues = titles; // 원래의 값을 저장해둠
                 presetWidget.options.values = titles;
-                addFilterToComboWidget(presetWidget); // 필터 추가
+                app.graph.setDirtyCanvas(true);
             };
 
             loadPresetTitles();
@@ -154,16 +154,18 @@ app.registerExtension({
 
                     const saveFile = async (title, content) => {
                         try {
-                            await fetch("/inspire/save_preset", {
+                            const response = await fetch("/inspire/save_preset", {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
                                 },
                                 body: JSON.stringify({ title, content }),
                             });
+                            if (!response.ok) throw new Error("Failed to save preset");
+
                             console.log("Save successful"); // 콘솔 로그 추가
 
-							// 프리셋 목록 다시 로드
+                            // 프리셋 목록 다시 로드
                             loadPresetTitles();
                         } catch (e) {
                             console.error("File save error: ", e);
