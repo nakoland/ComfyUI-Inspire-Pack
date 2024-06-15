@@ -5,6 +5,7 @@
 @description: This extension provides various nodes to support Lora Block Weight and the Impact Pack.
 """
 
+import os
 import importlib
 
 version_code = [0, 75, 3]

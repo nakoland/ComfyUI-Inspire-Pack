@@ -1,4 +1,5 @@
 import random
+import os
 
 import nodes
 import server
@@ -9,7 +10,56 @@ from . import backend_support
 
 
 max_seed = 2**32 - 1
+preset_file = os.path.join(os.path.dirname(__file__), "../prompts/preset.txt")
 
+@server.PromptServer.instance.routes.get("/inspire/preset_titles")
+async def get_preset_titles(request):
+    titles = []
+    with open(preset_file, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            title, _ = line.strip().split(": ")
+            titles.append(title)
+    return web.json_response(titles)
+
+
+@server.PromptServer.instance.routes.get("/inspire/preset_content")
+async def get_preset_content(request):
+    title = request.rel_url.query['title']
+    content = ""
+    with open(preset_file, "r") as file:
+        lines = file.readlines()
+        for line in lines:
+            current_title, current_content = line.strip().split(": ")
+            if current_title == title:
+                content = current_content
+                break
+    return web.json_response({"content": content})
+
+
+@server.PromptServer.instance.routes.post("/inspire/save_preset")
+async def save_preset(request):
+    data = await request.json()
+    title = data['title']
+    content = data['content']
+
+    lines = []
+    with open(preset_file, "r") as file:
+        lines = file.readlines()
+
+    with open(preset_file, "w") as file:
+        found = False
+        for line in lines:
+            current_title, _ = line.strip().split(": ")
+            if current_title == title:
+                file.write(f"{title}: {content}\n")
+                found = True
+            else:
+                file.write(line)
+        if not found:
+            file.write(f"{title}: {content}\n")
+
+    return web.Response(status=200)
 
 @server.PromptServer.instance.routes.get("/inspire/prompt_builder")
 def prompt_builder(request):
