@@ -27,16 +27,28 @@ async function get_prompt_builder_items(category) {
 
 // 프리셋 파일 경로에서 제목을 불러오는 함수
 async function fetchPresetTitles() {
-    const response = await fetch("/inspire/preset_titles");
-    const titles = await response.json();
-    return titles;
+    try {
+        const response = await fetch("/inspire/preset_titles");
+        if (!response.ok) throw new Error("Failed to fetch preset titles");
+        const titles = await response.json();
+        return titles;
+    } catch (error) {
+        console.error("Error fetching preset titles:", error);
+        return [];
+    }
 }
 
 // 프리셋 파일 경로에서 내용을 불러오는 함수
 async function fetchPresetContent(title) {
-    const response = await fetch(`/inspire/preset_content?title=${title}`);
-    const data = await response.json();
-    return data.content;
+    try {
+        const response = await fetch(`/inspire/preset_content?title=${title}`);
+        if (!response.ok) throw new Error(`Failed to fetch content for title: ${title}`);
+        const data = await response.json();
+        return data.content;
+    } catch (error) {
+        console.error("Error fetching preset content:", error);
+        return "";
+    }
 }
 
 app.registerExtension({
@@ -114,40 +126,72 @@ app.registerExtension({
                         return true;
                 }
             });
-			console.log("===================================");
 
-            // 프리셋 선택 위젯 추가
-			const presetWidget = node.addWidget("combo", "Preset", "", async (value) => {
-				const content = await fetchPresetContent(value);
-				wildcard_text_widget.value = content;
-			}, { values: [] });
+             // 프리셋 선택 위젯 추가
+			 const presetWidget = node.addWidget("combo", "Preset", "", (value) => {
+                node.selectedPreset = value;
+                console.log("Preset selected:", value); // 프리셋 선택 확인
+            }, { values: [] });
 
 			// 프리셋 목록 불러와서 위젯에 설정
-			fetchPresetTitles().then(titles => {
-				presetWidget.options.values = titles;
-			});
+            const loadPresetTitles = async () => {
+                const titles = await fetchPresetTitles();
+                presetWidget.options.originalValues = titles; // 원래의 값을 저장해둠
+                presetWidget.options.values = titles;
+                addFilterToComboWidget(presetWidget); // 필터 추가
+            };
 
-			// 저장 버튼 추가
+            loadPresetTitles();
+
+            // 저장 버튼 추가
             const saveButton = node.addWidget("button", "Save", "", () => {
                 const inputString = wildcard_text_widget.value;
-                const title = presetWidget.value;
+                const defaultTitle = node.selectedPreset || "default_preset_name"; // 현재 선택된 프리셋 이름을 기본값으로 설정
 
-                const saveFile = async (title, content) => {
-                    try {
-                        await fetch("/inspire/save_preset", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({ title, content }),
-                        });
-                    } catch (e) {
-                        console.error("File save error: ", e);
-                    }
-                };
+                const title = prompt("Enter the name for the preset:", defaultTitle);
+                if (title) {
+                    console.log("Saving preset:", title, inputString); // 콘솔 로그 추가
 
-                saveFile(title, inputString);
+                    const saveFile = async (title, content) => {
+                        try {
+                            await fetch("/inspire/save_preset", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ title, content }),
+                            });
+                            console.log("Save successful"); // 콘솔 로그 추가
+
+							// 프리셋 목록 다시 로드
+                            loadPresetTitles();
+                        } catch (e) {
+                            console.error("File save error: ", e);
+                        }
+                    };
+
+                    saveFile(title, inputString);
+                }
             });
+
+            // Load 버튼 추가
+            const loadButton = node.addWidget("button", "Load", "",() => {
+				console.log("Loading preset:", node.selectedPreset); 
+                if (node.selectedPreset) {
+                    fetchPresetContent(node.selectedPreset).then(content => {
+                        console.log("Fetched preset content:", content); // 콘솔 로그 추가
+                        wildcard_text_widget.value = content;
+                        // 위젯 갱신
+                        node.widgets[wildcard_text_widget_index].value = content;
+                        node.setDirtyCanvas(true); // 캔버스를 다시 그리도록 설정
+                    }).catch(e => {
+                        console.error("Load error:", e); // 에러 로그 추가
+                    });
+                } else {
+                    console.log("No preset selected"); // 프리셋이 선택되지 않은 경우 로그
+                }
+            });
+
         }
         else if (node.comfyClass == "MakeBasicPipe //Inspire") {
             const pos_wildcard_text_widget = node.widgets.find((w) => w.name == 'positive_wildcard_text');

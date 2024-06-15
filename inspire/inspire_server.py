@@ -48,16 +48,13 @@ async def save_preset(request):
         lines = file.readlines()
 
     with open(preset_file, "w") as file:
-        found = False
+        file.write(f"{title}: {content}\n")
         for line in lines:
             current_title, _ = line.strip().split(": ")
-            if current_title == title:
-                file.write(f"{title}: {content}\n")
-                found = True
-            else:
+            if current_title != title:
                 file.write(line)
-        if not found:
-            file.write(f"{title}: {content}\n")
+            else:
+                continue
 
     return web.Response(status=200)
 
