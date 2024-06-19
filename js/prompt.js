@@ -128,18 +128,20 @@ app.registerExtension({
                 }
             });
 
-             // 프리셋 선택 위젯 추가
-			 const presetWidget = node.addWidget("combo", "Preset", "", (value) => {
+            // 프리셋 목록 불러와서 위젯에 설정
+            const loadPresetTitles = () => {
+                fetchPresetTitles().then(titles => {
+                    presetWidget.options.values = titles;
+                    app.graph.setDirtyCanvas(true);
+                });
+            };
+
+            // 프리셋 선택 위젯 추가
+            const presetWidget = node.addWidget("combo", "Preset", "", (value) => {
                 node.selectedPreset = value;
                 console.log("Preset selected:", value); // 프리셋 선택 확인
+                loadPresetTitles(); // 프리셋 목록 다시 로드
             }, { values: [] });
-
-            // 프리셋 목록 불러와서 위젯에 설정
-            const loadPresetTitles = async () => {
-                const titles = await fetchPresetTitles();
-                presetWidget.options.values = titles;
-                app.graph.setDirtyCanvas(true);
-            };
 
             loadPresetTitles();
 
