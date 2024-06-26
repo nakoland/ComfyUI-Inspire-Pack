@@ -123,11 +123,12 @@ class LoadImagesFromDirList:
                 "image_load_cap": ("INT", {"default": 0, "min": 0, "step": 1}),
                 "start_index": ("INT", {"default": 0, "min": 0, "step": 1}),
                 "load_always": ("BOOLEAN", {"default": False, "label_on": "enabled", "label_off": "disabled"}),
+                "file_name":("STRING", {"default": ""}),
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK")
-    OUTPUT_IS_LIST = (True, True)
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING")
+    OUTPUT_IS_LIST = (True, True, True)
 
     FUNCTION = "load_images"
 
@@ -140,7 +141,7 @@ class LoadImagesFromDirList:
         else:
             return hash(frozenset(kwargs))
 
-    def load_images(self, directory: str, image_load_cap: int = 0, start_index: int = 0, load_always=False):
+    def load_images(self, directory: str, image_load_cap: int = 0, start_index: int = 0, load_always=False, file_name=""):
         if not os.path.isdir(directory):
             raise FileNotFoundError(f"Directory '{directory}' cannot be found.")
         dir_files = os.listdir(directory)
@@ -159,6 +160,7 @@ class LoadImagesFromDirList:
 
         images = []
         masks = []
+        file_names = []
 
         limit_images = False
         if image_load_cap > 0:
@@ -184,9 +186,10 @@ class LoadImagesFromDirList:
 
             images.append(image)
             masks.append(mask)
+            file_names.append(os.path.splitext(os.path.basename(image_path))[0])
             image_count += 1
 
-        return images, masks
+        return images, masks, file_names
 
 
 class LoadImageInspire:
